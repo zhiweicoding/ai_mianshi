@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI面试助手</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #messages {
+            border: 1px solid #ccc;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .question {
+            background-color: #f0f0f0;
+        }
+        .answer {
+            background-color: #e3f2fd;
+        }
+        #status {
+            color: #666;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI面试助手</h1>
+    <div id="status">连接状态：未连接</div>
+    <div id="messages"></div>
+
+    <script>
+        let ws;
+        const messagesDiv = document.getElementById('messages');
+        const statusDiv = document.getElementById('status');
+
+        function connect() {
+            ws = new WebSocket('ws://localhost:8000/ws');
+
+            ws.onopen = function() {
+                statusDiv.textContent = '连接状态：已连接';
+                statusDiv.style.color = 'green';
+            };
+
+            ws.onmessage = function(event) {
+                const message = event.data;
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message answer';
+                messageDiv.textContent = message;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            };
+
+            ws.onclose = function() {
+                statusDiv.textContent = '连接状态：已断开，正在重新连接...';
+                statusDiv.style.color = 'red';
+                setTimeout(connect, 1000);
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+            };
+        }
+
+        connect();
+    </script>
+</body>
+</html>
