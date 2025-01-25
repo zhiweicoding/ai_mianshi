@@ -40,11 +40,45 @@
     <h1>AI面试助手</h1>
     <div id="status">连接状态：未连接</div>
     <div id="messages"></div>
+    <div style="display: flex; gap: 10px;">
+        <input type="text" id="questionInput" placeholder="请输入您的问题" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+        <button onclick="sendQuestion()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">发送</button>
+    </div>
 
     <script>
         let ws;
+        let currentAnswerDiv = null;
         const messagesDiv = document.getElementById('messages');
         const statusDiv = document.getElementById('status');
+
+        function sendQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            
+            if (question && ws) {
+                // 显示用户问题
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'message question';
+                questionDiv.textContent = question;
+                messagesDiv.appendChild(questionDiv);
+                
+                // 重置答案div
+                currentAnswerDiv = null;
+                
+                // 发送问题
+                ws.send(question);
+                
+                // 清空输入框
+                input.value = '';
+            }
+        }
+
+        // 添加回车键发送功能
+        document.getElementById('questionInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendQuestion();
+            }
+        });
 
         function connect() {
             ws = new WebSocket('ws://localhost:8000/ws');
@@ -56,10 +90,19 @@
 
             ws.onmessage = function(event) {
                 const message = event.data;
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message answer';
-                messageDiv.textContent = message;
-                messagesDiv.appendChild(messageDiv);
+                console.log('message:'+message)
+                
+                if (!currentAnswerDiv) {
+                    currentAnswerDiv = document.createElement('div');
+                    currentAnswerDiv.className = 'message answer';
+                    messagesDiv.appendChild(currentAnswerDiv);
+                }
+                
+                // 添加新的文本节点而不是更新整个textContent
+                const textNode = document.createTextNode(message);
+                currentAnswerDiv.appendChild(textNode);
+                
+                // 确保新内容可见
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             };
 
