@@ -46,16 +46,15 @@
     </div>
 
     <script>
-        let ws;
         let currentAnswerDiv = null;
         const messagesDiv = document.getElementById('messages');
         const statusDiv = document.getElementById('status');
 
-        function sendQuestion() {
+        async function sendQuestion() {
             const input = document.getElementById('questionInput');
             const question = input.value.trim();
             
-            if (question && ws) {
+            if (question) {
                 // 显示用户问题
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'message question';
@@ -65,8 +64,48 @@
                 // 重置答案div
                 currentAnswerDiv = null;
                 
-                // 发送问题
-                ws.send(question);
+                try {
+                    // 发送问题到服务器
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ question: question })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        
+                        const text = decoder.decode(value);
+                        const lines = text.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const message = line.slice(6);
+                                if (!currentAnswerDiv) {
+                                    currentAnswerDiv = document.createElement('div');
+                                    currentAnswerDiv.className = 'message answer';
+                                    messagesDiv.appendChild(currentAnswerDiv);
+                                }
+                                currentAnswerDiv.textContent += message;
+                                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    statusDiv.textContent = '连接状态：发生错误';
+                    statusDiv.style.color = 'red';
+                }
                 
                 // 清空输入框
                 input.value = '';
@@ -80,44 +119,9 @@
             }
         });
 
-        function connect() {
-            ws = new WebSocket('ws://localhost:8000/ws');
-
-            ws.onopen = function() {
-                statusDiv.textContent = '连接状态：已连接';
-                statusDiv.style.color = 'green';
-            };
-
-            ws.onmessage = function(event) {
-                const message = event.data;
-                console.log('message:'+message)
-                
-                if (!currentAnswerDiv) {
-                    currentAnswerDiv = document.createElement('div');
-                    currentAnswerDiv.className = 'message answer';
-                    messagesDiv.appendChild(currentAnswerDiv);
-                }
-                
-                // 添加新的文本节点而不是更新整个textContent
-                const textNode = document.createTextNode(message);
-                currentAnswerDiv.appendChild(textNode);
-                
-                // 确保新内容可见
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            };
-
-            ws.onclose = function() {
-                statusDiv.textContent = '连接状态：已断开，正在重新连接...';
-                statusDiv.style.color = 'red';
-                setTimeout(connect, 1000);
-            };
-
-            ws.onerror = function(error) {
-                console.error('WebSocket错误:', error);
-            };
-        }
-
-        connect();
+        // 设置初始状态
+        statusDiv.textContent = '连接状态：就绪';
+        statusDiv.style.color = 'green';
     </script>
 </body>
 </html>

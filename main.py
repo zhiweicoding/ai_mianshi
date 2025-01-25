@@ -1,9 +1,11 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from typing import List
+from fastapi.responses import StreamingResponse
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+import time
+import asyncio
 
 load_dotenv()
 
@@ -16,58 +18,63 @@ client = OpenAI(
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
+async def stream_response(prompt: str):
+    try:
+        # 记录开始调用API的时间
+        api_start_time = time.time()
+        print(f"开始调用DeepSeek API，时间：{api_start_time}")
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
+        # 调用DeepSeek API进行流式对话
+        stream = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            stream=True
+        )
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def send_message(self, websocket: WebSocket, message: str):
-        await websocket.send_text(message)
-
-    async def stream_response(self, websocket: WebSocket, prompt: str):
-        try:
-            # 调用DeepSeek API进行流式对话
-            stream = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": prompt}],
-                stream=True
-            )
-
-            # 逐字输出响应
-            for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    content = chunk.choices[0].delta.content
-                    # print(f"DeepSeek流式返回: {content}")  # 添加调试信息
-                    await self.send_message(websocket, content)
-        except Exception as e:
-            error_message = f"错误：{str(e)}"
-            print(f"DeepSeek API错误: {error_message}")  # 添加错误调试信息
-            await self.send_message(websocket, error_message)
-
-manager = ConnectionManager()
+        first_response = True
+        # 使用迭代器处理响应
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                content = chunk.choices[0].delta.content
+                print(content, end="", flush=True)
+                if first_response:
+                    first_response_time = time.time()
+                    print(f"收到第一个响应，时间：{first_response_time}")
+                    print(f"API响应延迟：{first_response_time - api_start_time:.2f}秒")
+                    first_response = False
+                yield f"data: {content}\n\n"
+                await asyncio.sleep(0.1)  # 添加小延迟以确保数据能够正确传输
+    except Exception as e:
+        error_message = f"错误：{str(e)}"
+        print(f"DeepSeek API错误: {error_message}")
+        yield f"data: {error_message}\n\n"
 
 @app.get("/")
 async def root():
     return {"message": "AI面试助手服务已启动"}
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+@app.post("/chat")
+async def chat_endpoint(request: Request):
     try:
-        while True:
-            data = await websocket.receive_text()
-            # 使用DeepSeek API处理问题并流式输出回答
-            await manager.stream_response(websocket, data)
+        # 记录接收到用户请求的时间
+        request_start_time = time.time()
+        print(f"\n收到新的用户请求，时间：{request_start_time}")
+        
+        data = await request.json()
+        question = data.get("question")
+        
+        return StreamingResponse(
+            stream_response(question),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+            }
+        )
     except Exception as e:
-        print(f"WebSocket错误：{str(e)}")
-        manager.disconnect(websocket)
-
+        print(f"SSE错误：{str(e)}")
+        return {"error": str(e)}
 
 @app.get("/hello/{name}")
 async def say_hello(name: str):
