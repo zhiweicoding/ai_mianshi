@@ -43,7 +43,7 @@ async def stream_response(prompt: str):
                     print(f"API响应延迟：{first_response_time - api_start_time:.2f}秒")
                     first_response = False
                 yield f"data: {content}\n\n"
-                await asyncio.sleep(0.1)  # 添加小延迟以确保数据能够正确传输
+                # await asyncio.sleep(0.05)  # 添加小延迟以确保数据能够正确传输
     except Exception as e:
         error_message = f"错误：{str(e)}"
         print(f"DeepSeek API错误: {error_message}")

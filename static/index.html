@@ -96,7 +96,7 @@
                                     currentAnswerDiv.className = 'message answer';
                                     messagesDiv.appendChild(currentAnswerDiv);
                                 }
-                                currentAnswerDiv.textContent += message;
+                                currentAnswerDiv.innerHTML += message.replace(/\n/g, '<br>');
                                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
                             }
                         }
