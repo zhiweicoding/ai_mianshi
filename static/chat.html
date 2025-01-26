@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
+</head>
+<body>
+    <div class="header-bar">
+        <a href="#" class="back-btn"><i class="fas fa-chevron-left"></i></a>
+        <div class="chat-room-info">
+            <span class="title">test1</span>
+            <span class="subtitle">中文 + Python + 应用工程师</span>
+        </div>
+        <span class="time">国内 66ms | 66ms</span>
+    </div>
+
+    <div class="main-content">
+        <div class="left-panel">
+            <div class="message-area">
+                <div class="message-title">- 暂无消息 -</div>
+                <ul class="message-tips">
+                    <li>语音识别结果可能不准确，无需担心，大多数情况下并不会影响回答效果；</li>
+                    <li>您可以主动描述问题后再生成回答；</li>
+                    <li>您可以手动在下方输入框重新正确信息记录。</li>
+                </ul>
+                <div class="input-container">
+                    <input type="text" class="input-box" placeholder="手动纠错，回车发送，Ctrl Enter">
+                    <div class="button-group">
+                        <button class="btn-start"><i class="fas fa-play"></i> 开始</button>
+                        <button class="btn-local"><i class="fas fa-microphone"></i></button>
+                        <button class="btn-voice"><i class="fas fa-volume-up"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="empty-state">
+                <div class="empty-icon"><i class="far fa-circle"></i></div>
+                <div class="empty-title">空空如也</div>
+                <div class="empty-tips">
+                    尚未生成任何辅助回答<br>
+                    左下角文本输入框可手动输入消息...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="left-button-group">
+            <button class="toolbar-btn btn-start"><i class="fas fa-play"></i> 开始</button>
+            <button class="toolbar-btn btn-local"><i class="fas fa-microphone"></i> 本机</button>
+            <button class="toolbar-btn btn-remote"><i class="fas fa-headphones"></i> 对方</button>
+            <button class="toolbar-btn btn-audio"><i class="fas fa-volume-up"></i> 音频</button>
+        </div>
+        <div class="right-button-group">
+            <button class="toolbar-btn btn-shortcut"><i class="fas fa-keyboard"></i> 快捷键</button>
+            <button class="toolbar-btn btn-manual"><i class="fas fa-book"></i> 使用手册</button>
+            <button class="toolbar-btn btn-settings"><i class="fas fa-cog"></i> 辅助设置</button>
+        </div>
+    </div>
+</body>
+</html>

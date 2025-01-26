@@ -34,38 +34,114 @@
             color: #666;
             margin-bottom: 10px;
         }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .voice-btn {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .voice-btn.recording {
+            background-color: #dc3545;
+        }
     </style>
 </head>
 <body>
     <h1>AI面试助手</h1>
     <div id="status">连接状态：未连接</div>
     <div id="messages"></div>
-    <div style="display: flex; gap: 10px;">
+    <div class="input-container">
+        <button id="voiceBtn" class="voice-btn" onclick="toggleRecording()">
+            <span id="voiceBtnText">开始录音</span>
+        </button>
+    </div>
+    <div class="input-container">
         <input type="text" id="questionInput" placeholder="请输入您的问题" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
         <button onclick="sendQuestion()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">发送</button>
     </div>
 
     <script>
         let currentAnswerDiv = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
         const messagesDiv = document.getElementById('messages');
         const statusDiv = document.getElementById('status');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceBtnText = document.getElementById('voiceBtnText');
+
+        async function toggleRecording() {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob);
+
+                        try {
+                            const response = await fetch('/speech-to-text', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+
+                            const result = await response.json();
+                            document.getElementById('questionInput').value = result.text;
+                        } catch (error) {
+                            console.error('Error converting speech to text:', error);
+                            statusDiv.textContent = '语音识别失败';
+                            statusDiv.style.color = 'red';
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    voiceBtn.classList.add('recording');
+                    voiceBtnText.textContent = '停止录音';
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    statusDiv.textContent = '无法访问麦克风';
+                    statusDiv.style.color = 'red';
+                }
+            } else {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                voiceBtn.classList.remove('recording');
+                voiceBtnText.textContent = '开始录音';
+            }
+        }
 
         async function sendQuestion() {
             const input = document.getElementById('questionInput');
             const question = input.value.trim();
             
             if (question) {
-                // 显示用户问题
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'message question';
                 questionDiv.textContent = question;
                 messagesDiv.appendChild(questionDiv);
                 
-                // 重置答案div
                 currentAnswerDiv = null;
                 
                 try {
-                    // 发送问题到服务器
                     const response = await fetch('/chat', {
                         method: 'POST',
                         headers: {
@@ -107,19 +183,16 @@
                     statusDiv.style.color = 'red';
                 }
                 
-                // 清空输入框
                 input.value = '';
             }
         }
 
-        // 添加回车键发送功能
         document.getElementById('questionInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendQuestion();
             }
         });
 
-        // 设置初始状态
         statusDiv.textContent = '连接状态：就绪';
         statusDiv.style.color = 'green';
     </script>
